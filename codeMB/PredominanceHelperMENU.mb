@@ -1,0 +1,255 @@
+﻿Include "MapBasic.def"
+
+Include "Library\ARRAYLib.def"
+Include "Library\RIBBONLib.def"
+Include "Library\STRINGLib.def"
+Include "Library\ERRORLib.def"
+
+Declare Sub Main
+Declare Sub EndHandler
+
+Declare Function GetPredominanceColumn( ByVal sTab As String, arrColumnNames() As String) As String
+Declare Function GetPredominanceValue( ByVal sTab As String, arrColumnNames() As String) As Float
+Declare Function GetPredominanceIndex( ByVal sTab As String, arrColumnNames() As String) As Integer
+
+Declare Function GetPredominanceColumnCSL( ByVal sTab As String
+								, ByVal sColumnNames As String	'Comma Separated List of Column Names
+								) As String
+Declare Function GetPredominanceValueCSL( ByVal sTab As String
+								, ByVal sColumnNames As String	'Comma Separated List of Column Names
+								) As Float
+Declare Function GetPredominanceIndexCSL( ByVal sTab As String
+								, ByVal sColumnNames As String	'Comma Separated List of Column Names
+								) As Integer
+
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub Main
+
+Dim	bResult As Logical
+
+	bResult	= RBNRegisterFunctionAsPublic("GetPredominanceColumnCSL", "GetPredominanceColumnCSL", "Get name of column with highest value")
+	bResult	= RBNRegisterFunctionAsPublic("GetPredominanceValueCSL", "GetPredominanceValueCSL", "Get value from column with highest value")
+	bResult	= RBNRegisterFunctionAsPublic("GetPredominanceIndexCSL", "GetPredominanceIndexCSL", "Get column index from column with highest value")
+
+'To be used in application
+'Dim	sTab, arrColNames() As String
+'
+'	sTab = "MBI_CA_Census_Division_SocioDe"
+'	Redim arrColNames(0)
+'	Call ARRAYAddValueString(arrColNames, "AGE_T0014")
+'	Call ARRAYAddValueString(arrColNames, "AGE_T1529")
+'	Call ARRAYAddValueString(arrColNames, "AGE_T3044")
+'	Call ARRAYAddValueString(arrColNames, "AGE_T4559")
+'	Call ARRAYAddValueString(arrColNames, "AGE_T60PL")
+'
+'	Update sTab
+'		Set	AGET_PRED_NAME = GetPredominanceColumn(sTab, arrColNames),
+'			AGET_PRED_MAX	= GetPredominanceValue(sTab, arrColNames)
+
+'To be used in MapInfo Pro through MapBasic window or SQL Window
+'Dim	sTab As String
+'Dim sCols As String
+'
+'	sTab = "MBI_CA_Census_Division_SocioDe"
+'	sCols = "AGE_T0014,AGE_T1529,AGE_T3044,AGE_T4559,AGE_T60PL"
+'
+'	Update sTab
+'		Set	AGET_PRED_NAME = GetPredominanceColumnCSL(sTab, sCols),
+'			AGET_PRED_MAX	= GetPredominanceValueCSL(sTab, sCols)
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub EndHandler
+
+	Call RBNEndHandler
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function GetPredominanceColumn( ByVal sTab As String, arrColumnNames() As String) As String
+
+Dim 	i, nPredominanceIndex As Integer,
+	fPredominanceValue As Float,
+	aCol As Alias
+
+OnError GoTo ErrorOccured
+
+GetPredominanceColumn = ""
+
+	nPredominanceIndex	= GetPredominanceIndex(sTab, arrColumnNames())
+
+GetPredominanceColumn = arrColumnNames(nPredominanceIndex)
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "GetPredominanceColumn")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function GetPredominanceValue( ByVal sTab As String, arrColumnNames() As String) As Float
+
+Dim 	i, nPredominanceIndex As Integer,
+	fPredominanceValue As Float,
+	aCol As Alias
+
+OnError GoTo ErrorOccured
+
+GetPredominanceValue = -1
+
+	nPredominanceIndex	= GetPredominanceIndex(sTab, arrColumnNames())
+	aCol				= sTab + "." + arrColumnNames(nPredominanceIndex)
+
+GetPredominanceValue = aCol
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "GetPredominanceValue")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function GetPredominanceIndex( ByVal sTab As String, arrColumnNames() As String) As Integer
+
+Dim 	i, nPredominanceIndex As Integer,
+	fPredominanceValue As Float,
+	aCol As Alias
+
+OnError GoTo ErrorOccured
+
+GetPredominanceIndex = 1
+
+	aCol 			= sTab + "." + arrColumnNames(1)
+	fPredominanceValue	= aCol
+	nPredominanceIndex	= 1
+
+	For i = 2 To Ubound(arrColumnNames)
+		aCol = sTab + "." + arrColumnNames(i)
+		If aCol > fPredominanceValue Then
+			fPredominanceValue	= aCol
+			nPredominanceIndex	= i
+		End If
+	Next
+
+	GetPredominanceIndex = nPredominanceIndex
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "GetPredominanceIndex")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function GetPredominanceColumnCSL( ByVal sTab As String, ByVal sColumnNames As String) As String
+
+Dim	arrColumnNames(0) As String,
+	nCols As Integer
+
+OnError GoTo ErrorOccured
+
+GetPredominanceColumnCSL = -1
+
+	nCols	= STRINGSplitAndTrim(sColumnNames, ",", arrColumnNames)
+	GetPredominanceColumnCSL = GetPredominanceColumn(sTab, arrColumnNames())
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "GetPredominanceColumnCSL")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function GetPredominanceValueCSL( ByVal sTab As String, ByVal sColumnNames As String) As Float
+
+Dim	arrColumnNames(0) As String,
+	nCols As Integer
+
+OnError GoTo ErrorOccured
+
+GetPredominanceValueCSL = -1
+
+	nCols	= STRINGSplitAndTrim(sColumnNames, ",", arrColumnNames)
+	GetPredominanceValueCSL = GetPredominanceValue(sTab, arrColumnNames())
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "GetPredominanceValueCSL")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function GetPredominanceIndexCSL( ByVal sTab As String, ByVal sColumnNames As String) As Integer
+
+Dim	arrColumnNames(0) As String,
+	nCols As Integer
+
+OnError GoTo ErrorOccured
+
+GetPredominanceIndexCSL = -1
+
+	nCols	= STRINGSplitAndTrim(sColumnNames, ",", arrColumnNames)
+	GetPredominanceIndexCSL = GetPredominanceIndex(sTab, arrColumnNames())
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "GetPredominanceIndexCSL")
+	Call ERRShow()
+
+End Function
