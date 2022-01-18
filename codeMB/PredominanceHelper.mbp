@@ -1,6 +1,7 @@
 ﻿[LINK]
-Application=..\PredominanceHelper.mbx
+Application=..\PredominanceHelper\PredominanceHelper.mbx
 Module=Library\ARRAYLib.mbo
+Module=Library\COLUMNLib.mbo
 Module=Library\DEBUGLib.mbo
 Module=Library\ERRORLib.mbo
 Module=Library\FILELib.mbo
@@ -10,4 +11,6 @@ Module=Library\RESSTRNGLib.mbo
 Module=Library\STRINGLib.mbo
 Module=Library\RIBBONLib.mbo
 Module=Library\TABLELib.mbo
+Module=Library\Dialogs\DLGSelectTableAndColumns.mbo
 Module=PredominanceHelperMENU.mbo
+Module=DLGConfigurePredominance.mbo

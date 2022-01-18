@@ -1,0 +1,567 @@
+﻿'*******************************************************************************
+'** 	Created By Peter Horsbøll Møller, Precisely
+'** 	Program:
+'** 	Modul:
+'**
+'*******************************************************************************
+
+'-------------------------------------
+Include "MapBasic.def"
+Include "Icons.def"
+Include "Menu.def"
+'**default constants...
+Include "Library\Defaults.def"
+
+'-------------------------------------
+Include "Library\ARRAYLib.def"
+Include "Library\COLUMNLib.def"
+Include "Library\DEBUGLib.def"
+Include "Library\ERRORLib.def"
+Include "Library\STRINGLib.def"
+Include "Library\TABLELib.def"
+
+Include "DLGConfigurePredominance.def"
+
+Define	CTRL_LST_COLUMN_NAME			100
+Define	CTRL_TXT_COLUMN_ALIAS			200
+Define	CTRL_CHK_UPDATE_PREDOM_TEXT		300
+Define	CTRL_TXT_PREDOM_TEXT_COL_NAME		305
+Define	CTRL_LST_PREDOM_TEXT_TYPE		310
+Define	CTRL_CHK_UPDATE_PREDOM_VALUE		400
+Define	CTRL_TXT_PREDOM_VALUE_COL_NAME	405
+Define	CTRL_LST_PREDOM_VALUE_TYPE		410
+Define	CTRL_CHK_OPEN_IN_BROWSER			500
+Define	CTRL_CHK_OPEN_IN_MAP			510
+Define	CTRL_CHK_OPEN_IN_NEW_MAP			520
+
+Declare Sub DLGCP_DialogLoad
+Declare Sub DLGCP_DialogUnload
+Declare Sub DLGCP_ColumnNamesClicked
+Declare Sub DLGCP_UpdatePredomValueClicked
+Declare Sub DLGCP_UpdatePredomTextClicked
+
+Dim	marrColumnNames(), marrColumnAliases() As String,
+	mbDialogInitiating, mbUpdateWithPredominanceValue, mbUpdateWithPredominanceText As Logical,
+	mnColumnItemSelected, mnPredominanceValueType, mnPredominanceTextType As Integer,
+	msPredominanceValueColumnName, msPredominanceTextColumnName As String,
+	mbOpenResultInBrowser, mbOpenResultInCurrentMapper, mbOpenResultInNewMapper As Logical
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGConfigurePredominance(   ByVal sTable As String
+							, arrColumns() As String
+							) As Logical
+
+Dim	nCol As Integer,
+	sAlias As String
+
+OnError GoTo ErrorOccured
+
+DLGConfigurePredominance = FALSE
+
+	Redim marrColumnNames(0)
+	Call ARRAYAddArrayString(arrColumns, marrColumnNames)
+	Redim marrColumnAliases(Ubound(marrColumnNames))
+
+	For nCol = 1 To Ubound(marrColumnNames)
+		sAlias = marrColumnNames(nCol)
+
+		If Left$(sAlias, 1) = "_" Then
+			sAlias = Mid$(sAlias, 2, Len(sAlias))
+		End If
+
+		sAlias = STRINGReplace(sAlias, "___", " - ")
+		sAlias = STRINGReplace(sAlias, "__", "_")
+		sAlias = STRINGReplace(sAlias, "_", " ")
+
+		marrColumnAliases(nCol) = sAlias
+	Next
+
+	Dialog
+		Title "Configure Predominance"
+		Calling DLGCP_DialogLoad
+
+		Control StaticText	Position 5,5
+			Title "Table: " & sTable
+
+		'-----------------
+		Control StaticText	Position 5,20
+			Title "Column Names: "
+		Control ListBox	Position 5,30		ID CTRL_LST_COLUMN_NAME
+			Width 150		Height 70
+			Title From Variable marrColumnNames
+			Calling DLGCP_ColumnNamesClicked
+
+		Control StaticText	Position 165,20
+			Title "Column Alias: "
+		Control EditText	Position 165,30	ID CTRL_TXT_COLUMN_ALIAS
+			Width 150
+
+		'-----------------
+		Control GroupBox	Position 5,110
+			Width 310		Height 80
+			Title "Update Column:"
+
+		Control CheckBox	Position 15,120	ID CTRL_CHK_UPDATE_PREDOM_VALUE
+			Title "With Calculated Predominance Value"
+			Value DLGCPUpdatePredominanceValue()
+			Calling DLGCP_UpdatePredomValueClicked
+		Control StaticText	Position 25,135
+			Title "Column Name:"
+		Control EditText	Position 25,145	ID CTRL_TXT_PREDOM_VALUE_COL_NAME
+			Width 120
+			Value DLGCPGetPredomValueColumnName()
+		Control RadioGroup	Position 25,160	ID CTRL_LST_PREDOM_VALUE_TYPE
+			Title "Calculate Maximum;Calculate Minimum"
+			Value DLGCPGetPredominanceValueType()
+
+		Control CheckBox	Position 165,120	ID CTRL_CHK_UPDATE_PREDOM_TEXT
+			Title "With Predominance Text"
+			Value DLGCPUpdatePredominanceText()
+			Calling DLGCP_UpdatePredomTextClicked
+		Control StaticText	Position 175,135
+			Title "Column Name:"
+		Control EditText	Position 175,145	ID CTRL_TXT_PREDOM_TEXT_COL_NAME
+			Width 120
+			Value DLGCPGetPredomTextColumnName()
+		Control RadioGroup	Position 175,160	ID CTRL_LST_PREDOM_TEXT_TYPE
+			Title "Column Name;Column Alias"
+			Value DLGCPGetPredominanceTextType()
+
+		'-----------------
+		Control CheckBox	Position 5,195		ID CTRL_CHK_OPEN_IN_BROWSER
+			Title "Open result in Browser window"
+			Value DLGCPOpenResult("BROWSER")
+		Control CheckBox	Position 5,205		ID CTRL_CHK_OPEN_IN_MAP
+			Title "Open result in the current Mapper window"
+			Value DLGCPOpenResult("CURRENT MAP")
+		Control CheckBox	Position 5,215		ID CTRL_CHK_OPEN_IN_NEW_MAP
+			Title "Open result in new Mapper window"
+			Value DLGCPOpenResult("NEW MAP")
+
+		'-----------------
+		Control OKButton
+			Calling DLGCP_DialogUnload
+		Control CancelButton
+
+	If not CommandInfo(CMD_INFO_DLG_OK) Then
+		Exit Function
+	End If
+
+DLGConfigurePredominance = TRUE
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGConfigurePredominance")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGCP_DialogLoad
+
+OnError GoTo ErrorOccured
+
+	mbDialogInitiating = TRUE
+
+	Alter Control CTRL_LST_COLUMN_NAME Value 1
+	Call DLGCP_ColumnNamesClicked
+
+	If Not ReadControlValue(CTRL_CHK_UPDATE_PREDOM_VALUE) And Not ReadControlValue(CTRL_CHK_UPDATE_PREDOM_TEXT) Then
+		Alter Control CTRL_CHK_UPDATE_PREDOM_TEXT Value TRUE
+		Alter Control CTRL_CHK_UPDATE_PREDOM_VALUE Value TRUE
+	End If
+
+	Call DLGCP_UpdatePredomValueClicked
+	Call DLGCP_UpdatePredomTextClicked
+
+	mbDialogInitiating = FALSE
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCP_DialogLoad")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGCP_DialogUnload
+
+OnError GoTo ErrorOccured
+
+	If Not ReadControlValue(CTRL_CHK_UPDATE_PREDOM_VALUE) And Not ReadControlValue(CTRL_CHK_UPDATE_PREDOM_TEXT) Then
+		Note "Please make sure to check one of the update options (value or text)!"
+		Dialog Preserve
+		Exit Sub
+	End If
+
+	If mnColumnItemSelected > 0 Then
+		marrColumnAliases(mnColumnItemSelected)	= ReadControlValue(CTRL_TXT_COLUMN_ALIAS)
+	End If
+
+	mbUpdateWithPredominanceValue	= ReadControlValue(CTRL_CHK_UPDATE_PREDOM_VALUE)
+	mbUpdateWithPredominanceText	= ReadControlValue(CTRL_CHK_UPDATE_PREDOM_TEXT)
+
+	mnPredominanceValueType	= ReadControlValue(CTRL_LST_PREDOM_VALUE_TYPE)
+	mnPredominanceTextType	= ReadControlValue(CTRL_LST_PREDOM_TEXT_TYPE)
+
+	msPredominanceTextColumnName	= ReadControlValue(CTRL_TXT_PREDOM_TEXT_COL_NAME)
+	If mbUpdateWithPredominanceText Then
+		If msPredominanceTextColumnName = "" Then
+			Note "Please specify a column name for the predominant text."
+			Alter Control CTRL_TXT_PREDOM_TEXT_COL_NAME Active
+			Dialog Preserve
+			Exit Sub
+		Else
+			If COLGetValidName(msPredominanceTextColumnName) <> msPredominanceTextColumnName Then
+				Note "Please note column name can't hold special characters or start with a number. Verify the modified column name."
+				Alter Control CTRL_TXT_PREDOM_TEXT_COL_NAME Value COLGetValidName(msPredominanceTextColumnName)
+				Alter Control CTRL_TXT_PREDOM_TEXT_COL_NAME Active
+				Dialog Preserve
+				Exit Sub
+			End If
+		End If
+	End If
+
+	msPredominanceValueColumnName	= ReadControlValue(CTRL_TXT_PREDOM_VALUE_COL_NAME)
+	If mbUpdateWithPredominanceValue Then
+		If msPredominanceValueColumnName = "" Then
+			Note "Please specify a column name for the predominant Value."
+			Alter Control CTRL_TXT_PREDOM_VALUE_COL_NAME Active
+			Dialog Preserve
+			Exit Sub
+		Else
+			If COLGetValidName(msPredominanceValueColumnName) <> msPredominanceValueColumnName Then
+				Note "Please note column name can't hold special characters or start with a number. Verify the modified column name."
+				Alter Control CTRL_TXT_PREDOM_VALUE_COL_NAME Value COLGetValidName(msPredominanceValueColumnName)
+				Alter Control CTRL_TXT_PREDOM_VALUE_COL_NAME Active
+				Dialog Preserve
+				Exit Sub
+			End If
+		End If
+	End If
+
+	mbOpenResultInBrowser		= ReadControlValue(CTRL_CHK_OPEN_IN_BROWSER)
+	mbOpenResultInCurrentMapper	= ReadControlValue(CTRL_CHK_OPEN_IN_MAP)
+	mbOpenResultInNewMapper		= ReadControlValue(CTRL_CHK_OPEN_IN_NEW_MAP)
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCP_DialogUnload")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGCP_ColumnNamesClicked
+
+Dim	nColumnItem As Integer
+
+OnError GoTo ErrorOccured
+
+	If not mbDialogInitiating Then
+		If mnColumnItemSelected > 0 Then
+			marrColumnAliases(mnColumnItemSelected)	= ReadControlValue(CTRL_TXT_COLUMN_ALIAS)
+		End If
+	End If
+
+	mnColumnItemSelected = ReadControlValue(CTRL_LST_COLUMN_NAME)
+	Alter Control CTRL_TXT_COLUMN_ALIAS	Value marrColumnAliases(mnColumnItemSelected)
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCP_ColumnNamesClicked")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGCP_UpdatePredomValueClicked
+
+OnError GoTo ErrorOccured
+
+	If ReadControlValue(CTRL_CHK_UPDATE_PREDOM_VALUE) Then
+		Alter Control CTRL_LST_PREDOM_VALUE_TYPE Enable
+		Alter Control CTRL_TXT_PREDOM_VALUE_COL_NAME Enable
+	Else
+		Alter Control CTRL_LST_PREDOM_VALUE_TYPE Disable
+		Alter Control CTRL_TXT_PREDOM_VALUE_COL_NAME Disable
+	End If
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCP_UpdatePredomValueClicked")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGCP_UpdatePredomTextClicked
+
+OnError GoTo ErrorOccured
+
+	If ReadControlValue(CTRL_CHK_UPDATE_PREDOM_TEXT) Then
+		Alter Control CTRL_LST_PREDOM_TEXT_TYPE Enable
+		Alter Control CTRL_TXT_PREDOM_TEXT_COL_NAME Enable
+	Else
+		Alter Control CTRL_LST_PREDOM_TEXT_TYPE Disable
+		Alter Control CTRL_TXT_PREDOM_TEXT_COL_NAME Disable
+	End If
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCP_UpdatePredomTextClicked")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGCPGetColumnAliases( arrColumnAliases() As String) As Integer
+
+OnError GoTo ErrorOccured
+
+	Redim arrColumnAliases(0)
+	Call ARRAYAddArrayString(marrColumnAliases, arrColumnAliases)
+
+	DLGCPGetColumnAliases = Ubound(arrColumnAliases)
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCPGetColumnAliases")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGCPUpdatePredominanceValue() As Logical
+
+OnError GoTo ErrorOccured
+
+	DLGCPUpdatePredominanceValue = mbUpdateWithPredominanceValue
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCPUpdatePredominanceValue")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGCPGetPredominanceValueType() As Integer
+
+OnError GoTo ErrorOccured
+
+	If mnPredominanceValueType = 0 Then
+		mnPredominanceValueType = 1
+	End If
+
+	DLGCPGetPredominanceValueType = mnPredominanceValueType
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCPGetPredominanceValueType")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGCPGetPredomValueColumnName() As String
+
+OnError GoTo ErrorOccured
+
+	If msPredominanceValueColumnName = "" Then
+		msPredominanceValueColumnName = "PRED_VALUE"
+	End If
+
+	DLGCPGetPredomValueColumnName = msPredominanceValueColumnName
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCPGetPredomValueColumnName")
+	Call ERRShow()
+
+End Function
+
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGCPUpdatePredominanceText() As Logical
+
+OnError GoTo ErrorOccured
+
+	DLGCPUpdatePredominanceText = mbUpdateWithPredominanceText
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCPUpdatePredominanceText")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGCPGetPredominanceTextType() As Integer
+
+OnError GoTo ErrorOccured
+
+	If mnPredominanceTextType = 0 Then
+		mnPredominanceTextType = 2
+	End If
+
+	DLGCPGetPredominanceTextType = mnPredominanceTextType
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCPGetPredominanceTextType")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGCPGetPredomTextColumnName() As String
+
+OnError GoTo ErrorOccured
+
+	If msPredominanceTextColumnName = "" Then
+		msPredominanceTextColumnName = "PRED_TEXT"
+	End If
+
+	DLGCPGetPredomTextColumnName = msPredominanceTextColumnName
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCPGetPredomTextColumnName")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGCPGetTextColumnCharWidth() As Integer
+
+Dim	i, nMaxWidth As Integer
+
+OnError GoTo ErrorOccured
+
+	If DLGCPGetPredominanceTextType() = PREDOM_COL_TYPE_ALIAS Then
+		For i = 1 To Ubound(marrColumnAliases)
+			nMaxWidth = Maximum(nMaxWidth, Len(marrColumnAliases(i)))
+		Next
+	Else
+		For i = 1 To Ubound(marrColumnNames)
+			nMaxWidth = Maximum(nMaxWidth, Len(marrColumnNames(i)))
+		Next
+	End If
+
+	DLGCPGetTextColumnCharWidth = Minimum((nMaxWidth + 2), 254)
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCPGetTextColumnCharWidth")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGCPOpenResult(ByVal sWindowType As String) As Logical
+
+OnError GoTo ErrorOccured
+
+	Do Case sWindowType
+		Case "BROWSER"
+			DLGCPOpenResult = mbOpenResultInBrowser
+		Case "CURRENT MAP", "CURRENT MAPPER"
+			DLGCPOpenResult = mbOpenResultInCurrentMapper
+		Case "MAP", "MAPPER", "NEW MAP", "NEW MAPPER", "NEW_MAP", "NEW_MAPPER"
+			DLGCPOpenResult = mbOpenResultInNewMapper
+	End Case
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCPOpenResult")
+	Call ERRShow()
+
+End Function

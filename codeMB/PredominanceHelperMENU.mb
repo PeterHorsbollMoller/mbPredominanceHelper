@@ -1,27 +1,84 @@
-﻿Include "MapBasic.def"
+﻿'-------------------------------------
+Include "Enums.def"
+Include "Icons.def"
+Include "IMapInfoPro.def"
+Include "Library\MapBasic\RibbonControls.def"
+Include "MapBasic.def"
+Include "Menu.def"
+
+'**default constants...
+Include "Library\Defaults.def"
+'Include "Library\MI_ICONS_X64.def"
+
+Define xProgram 		"PredominanceHelper"
+Define xProgramMenu		"PredominanceHelper"
+Define xVersion 		"1.0.1"
+Define xYear			"2022"
+Define xAddToMenuBar	FALSE
+
+Define FILE_INI			GetFolderPath$(FOLDER_MI_PREFERENCE) & xProgram & ".ini"
+Define FILE_DBG			ApplicationDirectory$() & xProgram & ".dbg"
+'Define FILE_DLL			ApplicationDirectory$() & xProgram & ".dll"
+Define PATH_IMAGES			ApplicationDirectory$() & "images\"
 
 Include "Library\ARRAYLib.def"
+Include "Library\COLUMNLib.def"
+Include "Library\DEBUGLib.def"
+Include "Library\MAPPERLib.def"
+Include "Library\PROGRAMInfo.def"
 Include "Library\RIBBONLib.def"
 Include "Library\STRINGLib.def"
+Include "Library\TABLELib.def"
 Include "Library\ERRORLib.def"
+Include "Library\Dialogs\DLGSelectTableAndColumns.def"
+
+Include "DLGConfigurePredominance.def"
 
 Declare Sub Main
+Declare Sub EndProgram
 Declare Sub EndHandler
 
-Declare Function GetPredominanceColumn( ByVal sTab As String, arrColumnNames() As String) As String
-Declare Function GetPredominanceValue( ByVal sTab As String, arrColumnNames() As String) As Float
-Declare Function GetPredominanceIndex( ByVal sTab As String, arrColumnNames() As String) As Integer
+Declare Sub MENUPrintFunctionExamples
+Declare Sub MENUCalculatePredominance
 
-Declare Function GetPredominanceColumnCSL( ByVal sTab As String
-								, ByVal sColumnNames As String	'Comma Separated List of Column Names
+Declare Function GetPredominanceText(	  ByVal sTab As String
+								, arrColumnNames() As String
+								, ByVal nPredominanceType As Integer		'1: Maximum, 2: Minimum
 								) As String
-Declare Function GetPredominanceValueCSL( ByVal sTab As String
-								, ByVal sColumnNames As String	'Comma Separated List of Column Names
+Declare Function GetPredominanceAliasText(	  ByVal sTab As String
+									, arrColumnNames() As String
+									, arrAliases() As String
+									, ByVal nPredominanceType As Integer	'1: Maximum, 2: Minimum
+									) As String
+Declare Function GetPredominanceValue(	  ByVal sTab As String
+								, arrColumnNames() As String
+								, ByVal nPredominanceType As Integer		'1: Maximum, 2: Minimum
 								) As Float
-Declare Function GetPredominanceIndexCSL( ByVal sTab As String
-								, ByVal sColumnNames As String	'Comma Separated List of Column Names
+Declare Function GetPredominanceIndex(	  ByVal sTab As String
+								, arrColumnNames() As String
+								, ByVal nPredominanceType As Integer		'1: Maximum, 2: Minimum
 								) As Integer
 
+Declare Function GetPredominanceTextCSL( ByVal sTab As String
+								, ByVal sColumnNames As String			'Comma Separated List of Column Names
+								, ByVal nPredominanceType As Integer		'1: Maximum, 2: Minimum
+								) As String
+Declare Function GetPredominanceAliasTextCSL(  ByVal sTab As String
+									, ByVal sColumnNames As String		'Comma Separated List of Column Names
+									, ByVal sAliases As String			'Comma Separated List of Aliases
+									, ByVal nPredominanceType As Integer	'1: Maximum, 2: Minimum
+									) As String
+
+Declare Function GetPredominanceValueCSL( ByVal sTab As String
+								, ByVal sColumnNames As String			'Comma Separated List of Column Names
+								, ByVal nPredominanceType As Integer		'1: Maximum, 2: Minimum
+								) As Float
+Declare Function GetPredominanceIndexCSL( ByVal sTab As String
+								, ByVal sColumnNames As String			'Comma Separated List of Column Names
+								, ByVal nPredominanceType As Integer		'1: Maximum, 2: Minimum
+								) As Integer
+
+Dim	msTable, marrColumns(), marrAliases() As String
 
 '**********************************************************************************************''
 'Created by Peter Horsbøll Møller, Precisely
@@ -30,9 +87,76 @@ Declare Function GetPredominanceIndexCSL( ByVal sTab As String
 '**********************************************************************************************''
 Sub Main
 
-Dim	bResult As Logical
+Dim	bResult As Logical,
+	nCtrlIdx As Integer,
+	sTabName, sGroupName As String
 
-	bResult	= RBNRegisterFunctionAsPublic("GetPredominanceColumnCSL", "GetPredominanceColumnCSL", "Get name of column with highest value")
+	'***Initializing ApplicationInfo
+	Call PRGISetApplicationName(xProgram)
+	Call PRGISetApplicationVersion(xVersion)
+	Call PRGISetApplicationCopyrightYear(xYear)
+	Call PRGISetApplicationDevelopedBy("Peter Horsbøll Møller")
+	Call PRGISetCopyrightLicenseType("MIT License")
+	Call PRGISetDescription("PredominanceHelper compared values across multiple columns and returns the column with the highest value and the actual value.")
+	Call PRGISetApplicationImageUri(PATH_IMAGES & "CalculatePredominance_32.png")
+
+	'***Enabling Debug if file exists
+	Call DEBUGEnableByFile(FILE_DBG)
+
+	'***************************************************************
+	'T A B L E   R I B B O N   T A B   U S I N G   N E W   R I B B O N   S T A T E M E N T
+	'***************************************************************
+	sTabName				= "tabAnalyze"		'TAB_TABLE
+	sGroupName			= "grpPredominance"	'TAB_TABLE_CALC_GRP
+
+	Create Ribbon Tab sTabName Caption "Analyze"
+		Group sGroupName Caption "Predominance"
+		Controls (
+			Control "cmdPredominance2" Caption "Calculate Predominance"
+				Type CTRL_TYPE_BUTTON
+				Size Large
+				ToolTip "ToolTip: Calculate Predominance for selected columns"
+				Properties( PROPERTY_CALLINGHANDLER : "MENUCalculatePredominance"
+						, PROPERTY_LARGEICON : PATH_IMAGES & "CalculatePredominance_32.png"
+						, PROPERTY_SMALLICON : PATH_IMAGES & "CalculatePredominance_32.png"
+						)
+				)
+
+'	'***************************************************************
+'	'T A B L E   R I B B O N   T A B
+'	'***************************************************************
+'	sTabName				= TAB_TABLE
+'	sGroupName			= TAB_TABLE_CALC_GRP
+'
+'	nCtrlIdx	= RBNGroupAddControl("cmdPredominance", "Calculate Predominance", "", ControlType_Button, sTabName, sGroupName)
+'	If nCtrlIdx > 0 Then
+'		Call RBNControlSetToolTipIdx(nCtrlIdx, PRGIGetApplicationName(), "Calculate Predominance for selected columns", "")
+'		Call RBNControlSetIconsIdx(nCtrlIdx, CONTROL_SIZE_LARGE, "", PATH_IMAGES & "CalculatePredominance_32.png")
+'		Call RBNControlSetCustomMBXHandlerIdx(nCtrlIdx, "MENUCalculatePredominance")
+'	End If
+
+	'***************************************************************
+	'A P P L I C A T I O N    C O N T E X T    M E N U S
+	'***************************************************************
+	nCtrlIdx	= RBNToolContextMenuAddMenuItem("cmdPredominanceAppCntxt", "Calculate Predominance...", "")
+	If nCtrlIdx > 0 Then
+		'Create & Set the button tooltip
+		Call RBNControlSetToolTipIdx(nCtrlIdx, PRGIGetApplicationName(), "Calculate Predominance for selected columns", "")
+		'Set the button icon
+		Call RBNControlSetIconsIdx(nCtrlIdx, CONTROL_SIZE_SMALL, PATH_IMAGES & "CalculatePredominance_32.png", PATH_IMAGES & "CalculatePredominance_32.png")
+		Call RBNControlSetLeftMarginIdx(nCtrlIdx, 0)
+		Call RBNControlSetCustomMBXHandlerIdx(nCtrlIdx, "MENUCalculatePredominance")
+	End If	nCtrlIdx	= RBNToolContextMenuAddMenuItem("cmdFunctionList", "Print Function Examples", "")
+	If nCtrlIdx > 0 Then
+		'Create & Set the button tooltip
+		Call RBNControlSetToolTipIdx(nCtrlIdx, PRGIGetApplicationName(), "Print function examples to Message window", "")
+		'Set the button icon
+		Call RBNControlSetIconsIdx(nCtrlIdx, CONTROL_SIZE_SMALL, MI_IMG_APP_OPTSYSTEMSETTINGS_16, MI_IMG_APP_OPTSYSTEMSETTINGS_32)
+		Call RBNControlSetLeftMarginIdx(nCtrlIdx, 0)
+		Call RBNControlSetCustomMBXHandlerIdx(nCtrlIdx, "MENUPrintFunctionExamples")
+	End If
+
+	bResult	= RBNRegisterFunctionAsPublic("GetPredominanceTextCSL", "GetPredominanceTextCSL", "Get name of column with highest value")
 	bResult	= RBNRegisterFunctionAsPublic("GetPredominanceValueCSL", "GetPredominanceValueCSL", "Get value from column with highest value")
 	bResult	= RBNRegisterFunctionAsPublic("GetPredominanceIndexCSL", "GetPredominanceIndexCSL", "Get column index from column with highest value")
 
@@ -48,7 +172,7 @@ Dim	bResult As Logical
 '	Call ARRAYAddValueString(arrColNames, "AGE_T60PL")
 '
 '	Update sTab
-'		Set	AGET_PRED_NAME = GetPredominanceColumn(sTab, arrColNames),
+'		Set	AGET_PRED_NAME = GetPredominanceText(sTab, arrColNames),
 '			AGET_PRED_MAX	= GetPredominanceValue(sTab, arrColNames)
 
 'To be used in MapInfo Pro through MapBasic window or SQL Window
@@ -59,8 +183,71 @@ Dim	bResult As Logical
 '	sCols = "AGE_T0014,AGE_T1529,AGE_T3044,AGE_T4559,AGE_T60PL"
 '
 '	Update sTab
-'		Set	AGET_PRED_NAME = GetPredominanceColumnCSL(sTab, sCols),
+'		Set	AGET_PRED_NAME = GetPredominanceTextCSL(sTab, sCols),
 '			AGET_PRED_MAX	= GetPredominanceValueCSL(sTab, sCols)
+
+End Sub
+
+'****************************************
+'**   Created by Peter Horsbøll Møller, Precisely
+'**   Ending MapBasic application
+'****************************************
+Sub EndProgram
+
+OnError GoTo ErrorOccured
+
+	End Program
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "EndProgram")
+	Call ERRShow()
+
+End Sub
+
+'****************************************
+'**   Created by Peter Horsbøll Møller, Precisely
+'**   Ending MapBasic application
+'****************************************
+Sub EndHandler
+
+OnError GoTo ErrorOccured
+
+	Call RBNEndHandler
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "EndProgram")
+	Call ERRShow()
+
+End Sub
+
+'****************************************
+'**   Created by Peter Horsbøll Møller, Precisely
+'**   Ending MapBasic application
+'****************************************
+Sub MENUPrintFunctionExamples
+
+OnError GoTo ErrorOccured
+
+	Print "Update Census_SocioDemographics"
+	Print "   Set AGET_PRED_NAME = GetPredominanceTextCSL(""Census_SocioDemographics"", ""AGE_T0014,AGE_T1529,AGE_T3044,AGE_T4559,AGE_T60PL"", 1),"
+	Print "   AGET_PRED_MAX = GetPredominanceValueCSL(""Census_SocioDemographics"", ""AGE_T0014,AGE_T1529,AGE_T3044,AGE_T4559,AGE_T60PL"", 1)"
+	Print ""
+	Print ""
+	Print "Where:"
+	Print " - 'Census_SocioDemographics' is your table"
+	Print " - 'AGET_PRED_NAME' is the column to update with the predominant column name"
+	Print " - 'AGET_PRED_MAX' is the column to update with the predominant value"
+	Print " - 'AGE_T0014,AGE_T1529,AGE_T3044,AGE_T4559,AGE_T60PL' is the columns to compare"
+	Print " - '1' specifies to find the maximum value. Use '2' to find the minimum value"
+	Print " - ''"
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "MENUPrintFunctionExamples")
+	Call ERRShow()
 
 End Sub
 
@@ -69,9 +256,121 @@ End Sub
 'Parameters:
 '
 '**********************************************************************************************''
-Sub EndHandler
+Sub MENUCalculatePredominance
 
-	Call RBNEndHandler
+Dim	nNumCols, nMID As Integer
+
+OnError GoTo ErrorOccured
+
+	'*** SELECTING TABLE AND COLUMNS
+	If not DLGSelectTableAndColumns(TAB_USE_BASE, "Calculate predominance", "Select Table for Predominance Calculation", msTable
+							, CRITERIA_USE_NUMERICAL, "Select Columns to Compare", ARRAYToSeparatedTextString(marrColumns(), ",")
+							, "Open...", TRUE) Then
+		Exit Sub
+	End If
+
+	msTable	= DLGSTCSGetTableName()
+	nNumCols	= DLGSTCSGetColumnNames(marrColumns)
+
+	'*** CONFIGURING PREDOMINANCE
+	If not DLGConfigurePredominance(msTable, marrColumns) Then
+		'Note "Predominance Configuration dialog was cancelled."
+		Exit Sub
+	End If
+
+	nNumCols	= DLGCPGetColumnAliases(marrAliases)
+'	Print "Predominance Value Column: " & DLGCPGetPredomValueColumnName()
+'	Print "Predominance Text Column: " & DLGCPGetPredomValueColumnName()
+
+	'*** ADDING COLUMNS TO UPDATE
+	If not COLExists(msTable, DLGCPGetPredomTextColumnName()) AND DLGCPUpdatePredominanceText() Then
+		If Ask("The table '" & msTable & "' will be removed from maps and browsers. Do you want to continue?", "No", "Yes") Then
+			Exit Sub
+		End If
+
+		If not COLExists(msTable, DLGCPGetPredomValueColumnName()) And DLGCPUpdatePredominanceValue() Then
+'			Print "Adding Predominance Value and Text Column..."
+			Alter Table msTable
+				(
+				  Add DLGCPGetPredomTextColumnName()	Char(DLGCPGetTextColumnCharWidth())
+				, DLGCPGetPredomValueColumnName()		Float
+				)
+		Else
+'			Print "Adding Predominance Text Column..."
+			Alter Table msTable
+				(
+				  Add DLGCPGetPredomTextColumnName()	Char(DLGCPGetTextColumnCharWidth())
+				)
+		End If
+	ElseIf not COLExists(msTable, DLGCPGetPredomValueColumnName()) AND DLGCPUpdatePredominanceValue() Then
+		If Ask("The table '" & msTable & "' will be removed from maps and browsers. Do you want to continue?", "No", "Yes") Then
+			Exit Sub
+		End If
+
+'		Print "Adding Predominance Value Column..."
+		Alter Table msTable
+			(
+			  Add DLGCPGetPredomValueColumnName()		Float
+			)
+	End If
+
+	'*** PERFORMING UPDATE STATEMENTS
+	If DLGCPUpdatePredominanceText() AND DLGCPUpdatePredominanceValue() Then
+		If DLGCPGetPredominanceTextType() = PREDOM_COL_TYPE_NAME Then
+'			Print "Updating Predominance Text and Value Column..."
+			Update msTable
+				Set	DLGCPGetPredomTextColumnName()	= GetPredominanceText(msTable, marrColumns, DLGCPGetPredominanceValueType()),
+					DLGCPGetPredomValueColumnName()	= GetPredominanceValue(msTable, marrColumns, DLGCPGetPredominanceValueType())
+		Else
+'			Print "Updating Predominance Text (using Alias) and Value Column..."
+			Update msTable
+				Set	DLGCPGetPredomTextColumnName()	= GetPredominanceAliasText(msTable, marrColumns, marrAliases, DLGCPGetPredominanceValueType()),
+					DLGCPGetPredomValueColumnName()	= GetPredominanceValue(msTable, marrColumns, DLGCPGetPredominanceValueType())
+		End If
+
+	ElseIf DLGCPUpdatePredominanceText() Then
+		If DLGCPGetPredominanceTextType() = PREDOM_COL_TYPE_NAME Then
+'			Print "Updating Predominance Text Column..."
+			Update msTable
+				Set	DLGCPGetPredomTextColumnName()	= GetPredominanceText(msTable, marrColumns, DLGCPGetPredominanceValueType())
+		Else
+'			Print "Updating Predominance Text (using Alias) Column..."
+			Update msTable
+				Set	DLGCPGetPredomTextColumnName()	= GetPredominanceAliasText(msTable, marrColumns, marrAliases, DLGCPGetPredominanceValueType())
+		End If
+
+	ElseIf DLGCPUpdatePredominanceValue() Then
+'		Print "Updating Predominance Value Column..."
+		Update msTable
+			Set	DLGCPGetPredomValueColumnName()	= GetPredominanceValue(msTable, marrColumns, DLGCPGetPredominanceValueType())
+	End If
+
+	If DLGCPOpenResult("BROWSER") Then
+		Browse * From msTable
+	End If
+
+	If DLGCPOpenResult("NEW MAP") Then
+		Map From msTable
+	End If
+
+	If DLGCPOpenResult("CURRENT MAP") Then
+		nMID = MAPFrontMostWindow()
+		If nMID = 0 Then
+			If Not DLGCPOpenResult("NEW MAP") Then
+				Map From msTable
+			End If
+		Else
+			Add Map
+				Window nMID
+				Auto Layer msTable
+		End If
+	End If
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "MENUCalculatePredominance")
+	Call ERRShow()
 
 End Sub
 
@@ -82,7 +381,10 @@ End Sub
 'Return value:
 '
 '**********************************************************************************************''
-Function GetPredominanceColumn( ByVal sTab As String, arrColumnNames() As String) As String
+Function GetPredominanceText(	  ByVal sTab As String
+						, arrColumnNames() As String
+						, ByVal nPredominanceType As Integer		'1: Maximum, 2: Minimum
+						) As String
 
 Dim 	i, nPredominanceIndex As Integer,
 	fPredominanceValue As Float,
@@ -90,16 +392,16 @@ Dim 	i, nPredominanceIndex As Integer,
 
 OnError GoTo ErrorOccured
 
-GetPredominanceColumn = ""
+GetPredominanceText = ""
 
-	nPredominanceIndex	= GetPredominanceIndex(sTab, arrColumnNames())
+	nPredominanceIndex	= GetPredominanceIndex(sTab, arrColumnNames(), nPredominanceType)
 
-GetPredominanceColumn = arrColumnNames(nPredominanceIndex)
+	GetPredominanceText = arrColumnNames(nPredominanceIndex)
 
 	Exit Function
 '-------------------------
 ErrorOccured:
-	Call ERRCreate(Err(), Error$(), "GetPredominanceColumn")
+	Call ERRCreate(Err(), Error$(), "GetPredominanceText")
 	Call ERRShow()
 
 End Function
@@ -111,7 +413,44 @@ End Function
 'Return value:
 '
 '**********************************************************************************************''
-Function GetPredominanceValue( ByVal sTab As String, arrColumnNames() As String) As Float
+Function GetPredominanceAliasText(	  ByVal sTab As String
+							, arrColumnNames() As String
+							, arrAliases() As String
+							, ByVal nPredominanceType As Integer		'1: Maximum, 2: Minimum
+							) As String
+
+Dim 	i, nPredominanceIndex As Integer,
+	fPredominanceValue As Float,
+	aCol As Alias
+
+OnError GoTo ErrorOccured
+
+GetPredominanceAliasText = ""
+
+	nPredominanceIndex	= GetPredominanceIndex(sTab, arrColumnNames(), nPredominanceType)
+
+GetPredominanceAliasText = arrAliases(nPredominanceIndex)
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "GetPredominanceAliasText")
+	Call ERRShow()
+
+End Function
+
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function GetPredominanceValue(  ByVal sTab As String
+						, arrColumnNames() As String
+						, ByVal nPredominanceType As Integer		'1: Maximum, 2: Minimum
+						) As Float
 
 Dim 	i, nPredominanceIndex As Integer,
 	fPredominanceValue As Float,
@@ -121,7 +460,7 @@ OnError GoTo ErrorOccured
 
 GetPredominanceValue = -1
 
-	nPredominanceIndex	= GetPredominanceIndex(sTab, arrColumnNames())
+	nPredominanceIndex	= GetPredominanceIndex(sTab, arrColumnNames(), nPredominanceType)
 	aCol				= sTab + "." + arrColumnNames(nPredominanceIndex)
 
 GetPredominanceValue = aCol
@@ -141,7 +480,10 @@ End Function
 'Return value:
 '
 '**********************************************************************************************''
-Function GetPredominanceIndex( ByVal sTab As String, arrColumnNames() As String) As Integer
+Function GetPredominanceIndex(  ByVal sTab As String
+						, arrColumnNames() As String
+						, ByVal nPredominanceType As Integer		'1: Maximum, 2: Minimum
+						) As Integer
 
 Dim 	i, nPredominanceIndex As Integer,
 	fPredominanceValue As Float,
@@ -157,10 +499,24 @@ GetPredominanceIndex = 1
 
 	For i = 2 To Ubound(arrColumnNames)
 		aCol = sTab + "." + arrColumnNames(i)
-		If aCol > fPredominanceValue Then
-			fPredominanceValue	= aCol
-			nPredominanceIndex	= i
-		End If
+		Do Case nPredominanceType
+			Case PREDOM_VALUE_TYPE_MAX
+				If aCol > fPredominanceValue Then
+					fPredominanceValue	= aCol
+					nPredominanceIndex	= i
+				End If
+			Case PREDOM_VALUE_TYPE_MIN
+				If aCol < fPredominanceValue Then
+					fPredominanceValue	= aCol
+					nPredominanceIndex	= i
+				End If
+			Case Else
+				'Using Maximum if value doesn't match other options
+				If aCol > fPredominanceValue Then
+					fPredominanceValue	= aCol
+					nPredominanceIndex	= i
+				End If
+		End Case
 	Next
 
 	GetPredominanceIndex = nPredominanceIndex
@@ -180,22 +536,25 @@ End Function
 'Return value:
 '
 '**********************************************************************************************''
-Function GetPredominanceColumnCSL( ByVal sTab As String, ByVal sColumnNames As String) As String
+Function GetPredominanceTextCSL(	  ByVal sTab As String
+							, ByVal sColumnNames As String
+							, ByVal nPredominanceType As Integer		'1: Maximum, 2: Minimum
+							) As String
 
 Dim	arrColumnNames(0) As String,
 	nCols As Integer
 
 OnError GoTo ErrorOccured
 
-GetPredominanceColumnCSL = -1
+GetPredominanceTextCSL = -1
 
 	nCols	= STRINGSplitAndTrim(sColumnNames, ",", arrColumnNames)
-	GetPredominanceColumnCSL = GetPredominanceColumn(sTab, arrColumnNames())
+	GetPredominanceTextCSL = GetPredominanceText(sTab, arrColumnNames(), nPredominanceType)
 
 	Exit Function
 '-------------------------
 ErrorOccured:
-	Call ERRCreate(Err(), Error$(), "GetPredominanceColumnCSL")
+	Call ERRCreate(Err(), Error$(), "GetPredominanceTextCSL")
 	Call ERRShow()
 
 End Function
@@ -207,7 +566,42 @@ End Function
 'Return value:
 '
 '**********************************************************************************************''
-Function GetPredominanceValueCSL( ByVal sTab As String, ByVal sColumnNames As String) As Float
+Function GetPredominanceAliasTextCSL(	  ByVal sTab As String
+								, ByVal sColumnNames As String
+								, ByVal sAliases As String
+								, ByVal nPredominanceType As Integer		'1: Maximum, 2: Minimum
+								) As String
+
+Dim	arrColumnNames(0), arrAliases(0) As String,
+	nCols As Integer
+
+OnError GoTo ErrorOccured
+
+GetPredominanceAliasTextCSL = -1
+
+	nCols	= STRINGSplitAndTrim(sColumnNames, ",", arrColumnNames)
+	nCols	= STRINGSplitAndTrim(sAliases, ",", arrAliases)
+	GetPredominanceAliasTextCSL = GetPredominanceAliasText(sTab, arrColumnNames(), arrAliases(), nPredominanceType)
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "GetPredominanceAliasTextCSL")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function GetPredominanceValueCSL(	  ByVal sTab As String
+							, ByVal sColumnNames As String
+							, ByVal nPredominanceType As Integer		'1: Maximum, 2: Minimum
+							) As Float
 
 Dim	arrColumnNames(0) As String,
 	nCols As Integer
@@ -217,7 +611,7 @@ OnError GoTo ErrorOccured
 GetPredominanceValueCSL = -1
 
 	nCols	= STRINGSplitAndTrim(sColumnNames, ",", arrColumnNames)
-	GetPredominanceValueCSL = GetPredominanceValue(sTab, arrColumnNames())
+	GetPredominanceValueCSL = GetPredominanceValue(sTab, arrColumnNames(), nPredominanceType)
 
 	Exit Function
 '-------------------------
@@ -234,7 +628,10 @@ End Function
 'Return value:
 '
 '**********************************************************************************************''
-Function GetPredominanceIndexCSL( ByVal sTab As String, ByVal sColumnNames As String) As Integer
+Function GetPredominanceIndexCSL(	  ByVal sTab As String
+							, ByVal sColumnNames As String
+							, ByVal nPredominanceType As Integer		'1: Maximum, 2: Minimum
+							) As Integer
 
 Dim	arrColumnNames(0) As String,
 	nCols As Integer
@@ -244,7 +641,7 @@ OnError GoTo ErrorOccured
 GetPredominanceIndexCSL = -1
 
 	nCols	= STRINGSplitAndTrim(sColumnNames, ",", arrColumnNames)
-	GetPredominanceIndexCSL = GetPredominanceIndex(sTab, arrColumnNames())
+	GetPredominanceIndexCSL = GetPredominanceIndex(sTab, arrColumnNames(), nPredominanceType)
 
 	Exit Function
 '-------------------------

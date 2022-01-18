@@ -1,0 +1,22 @@
+﻿Define	PREDOM_COL_TYPE_NAME	1
+Define	PREDOM_COL_TYPE_ALIAS	2
+Define	PREDOM_VALUE_TYPE_MAX	1
+Define	PREDOM_VALUE_TYPE_MIN	2
+
+Declare Function DLGConfigurePredominance(	  ByVal sTable As String
+									, arrColumns() As String
+									) As Logical
+
+Declare Function DLGCPGetColumnAliases( arrColumnAliases() As String) As Integer
+
+Declare Function DLGCPUpdatePredominanceValue() As Logical
+Declare Function DLGCPGetPredominanceValueType() As Integer
+Declare Function DLGCPGetPredomValueColumnName() As String
+
+Declare Function DLGCPUpdatePredominanceText() As Logical
+Declare Function DLGCPGetPredominanceTextType() As Integer
+Declare Function DLGCPGetPredomTextColumnName() As String
+
+Declare Function DLGCPGetTextColumnCharWidth() As Integer
+
+Declare Function DLGCPOpenResult(ByVal sWindowType As String) As Logical
