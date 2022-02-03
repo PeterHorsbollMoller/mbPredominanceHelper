@@ -101,6 +101,10 @@ DLGConfigurePredominance = FALSE
 		Control EditText	Position 165,30	ID CTRL_TXT_COLUMN_ALIAS
 			Width 150
 
+		Control StaticText	Position 165,50
+			Title "If multiple columns hold the predominant value, the tool will return the first column with the predominant value"
+			Width 150		Height 50
+
 		'-----------------
 		Control GroupBox	Position 5,110
 			Width 310		Height 80

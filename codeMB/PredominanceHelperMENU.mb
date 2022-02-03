@@ -12,12 +12,13 @@ Include "Library\Defaults.def"
 
 Define xProgram 		"PredominanceHelper"
 Define xProgramMenu		"PredominanceHelper"
-Define xVersion 		"1.0.1"
+Define xVersion 		"1.0.2"
 Define xYear			"2022"
 Define xAddToMenuBar	FALSE
 
 Define FILE_INI			GetFolderPath$(FOLDER_MI_PREFERENCE) & xProgram & ".ini"
 Define FILE_DBG			ApplicationDirectory$() & xProgram & ".dbg"
+Define FILE_HLP			ApplicationDirectory$() & xProgram & ".pdf"
 'Define FILE_DLL			ApplicationDirectory$() & xProgram & ".dll"
 Define PATH_IMAGES			ApplicationDirectory$() & "images\"
 
@@ -95,10 +96,11 @@ Dim	bResult As Logical,
 	Call PRGISetApplicationName(xProgram)
 	Call PRGISetApplicationVersion(xVersion)
 	Call PRGISetApplicationCopyrightYear(xYear)
-	Call PRGISetApplicationDevelopedBy("Peter Horsbøll Møller")
+	Call PRGISetApplicationDevelopedBy("Peter Horsbøll Møller and Tony Maber")
 	Call PRGISetCopyrightLicenseType("MIT License")
 	Call PRGISetDescription("PredominanceHelper compared values across multiple columns and returns the column with the highest value and the actual value.")
 	Call PRGISetApplicationImageUri(PATH_IMAGES & "CalculatePredominance_32.png")
+	Call PRGISetApplicationHelpFile(FILE_HLP)
 
 	'***Enabling Debug if file exists
 	Call DEBUGEnableByFile(FILE_DBG)
@@ -109,31 +111,31 @@ Dim	bResult As Logical,
 	sTabName				= "tabAnalyze"		'TAB_TABLE
 	sGroupName			= "grpPredominance"	'TAB_TABLE_CALC_GRP
 
-	Create Ribbon Tab sTabName Caption "Analyze"
-		Group sGroupName Caption "Predominance"
-		Controls (
-			Control "cmdPredominance2" Caption "Calculate Predominance"
-				Type CTRL_TYPE_BUTTON
-				Size Large
-				ToolTip "ToolTip: Calculate Predominance for selected columns"
-				Properties( PROPERTY_CALLINGHANDLER : "MENUCalculatePredominance"
-						, PROPERTY_LARGEICON : PATH_IMAGES & "CalculatePredominance_32.png"
-						, PROPERTY_SMALLICON : PATH_IMAGES & "CalculatePredominance_32.png"
-						)
-				)
+'	Create Ribbon Tab sTabName Caption "Analyze"
+'		Group sGroupName Caption "Predominance"
+'		Controls (
+'			Control "cmdPredominance2" Caption "Calculate Predominance"
+'				Type CTRL_TYPE_BUTTON
+'				Size Large
+'				ToolTip "ToolTip: Calculate Predominance for selected columns"
+'				Properties( PROPERTY_CALLINGHANDLER : "MENUCalculatePredominance"
+'						, PROPERTY_LARGEICON : PATH_IMAGES & "CalculatePredominance_32.png"
+'						, PROPERTY_SMALLICON : PATH_IMAGES & "CalculatePredominance_32.png"
+'						)
+'				)
 
 '	'***************************************************************
 '	'T A B L E   R I B B O N   T A B
 '	'***************************************************************
-'	sTabName				= TAB_TABLE
-'	sGroupName			= TAB_TABLE_CALC_GRP
-'
-'	nCtrlIdx	= RBNGroupAddControl("cmdPredominance", "Calculate Predominance", "", ControlType_Button, sTabName, sGroupName)
-'	If nCtrlIdx > 0 Then
-'		Call RBNControlSetToolTipIdx(nCtrlIdx, PRGIGetApplicationName(), "Calculate Predominance for selected columns", "")
-'		Call RBNControlSetIconsIdx(nCtrlIdx, CONTROL_SIZE_LARGE, "", PATH_IMAGES & "CalculatePredominance_32.png")
-'		Call RBNControlSetCustomMBXHandlerIdx(nCtrlIdx, "MENUCalculatePredominance")
-'	End If
+	sTabName				= TAB_TABLE
+	sGroupName			= TAB_TABLE_CALC_GRP
+
+	nCtrlIdx	= RBNGroupAddControl("cmdPredominance", "Calculate Predominance", "", ControlType_Button, sTabName, sGroupName)
+	If nCtrlIdx > 0 Then
+		Call RBNControlSetToolTipIdx(nCtrlIdx, PRGIGetApplicationName(), "Calculate Predominance for selected columns", "")
+		Call RBNControlSetIconsIdx(nCtrlIdx, CONTROL_SIZE_LARGE, "", PATH_IMAGES & "CalculatePredominance_32.png")
+		Call RBNControlSetCustomMBXHandlerIdx(nCtrlIdx, "MENUCalculatePredominance")
+	End If
 
 	'***************************************************************
 	'A P P L I C A T I O N    C O N T E X T    M E N U S

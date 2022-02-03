@@ -1,26 +1,33 @@
 [Open Files]
 Active File Display Mode=1
-Active File Index=0
-Open File Line0=8064
+Active File Index=5
+Open File Line0=6150
 Open File Line1=2
-Open File Line2=7158
+Open File Line2=5552
 Open File Line3=2
-Open File Pos0=9732
+Open File Line4=3069
+Open File Line5=2
+Open File Pos0=7614
 Open File Pos1=1036
-Open File Pos2=9432
+Open File Pos2=6834
 Open File Pos3=1568
-Open File Window Pos0=0,1,-1,-1,-1,-1,3,26,1899,1156
-Open File Window Pos1=0,1,-1,-1,-1,-1,3,26,1899,1156
-Open File Window Pos2=0,1,-1,-1,-1,-1,3,26,1899,1156
-Open File Window Pos3=0,1,-1,-1,-1,-1,3,26,1899,1156
+Open File Pos4=4912
+Open File Pos5=2
+Open File Window Pos0=0,1,-1,-1,-1,-1,3,26,1913,735
+Open File Window Pos1=0,1,-1,-1,-1,-1,3,26,1913,735
+Open File Window Pos2=0,1,-1,-1,-1,-1,3,26,1913,735
+Open File Window Pos3=0,1,-1,-1,-1,-1,3,26,1913,735
+Open File Window Pos4=0,1,-1,-1,-1,-1,3,26,1913,735
+Open File Window Pos5=0,1,-1,-1,-1,-1,3,26,1913,735
 Open File0=D:\Dropbox (Horsboll-Moller)\3. MB_Kode\mbPredominanceHelper\codeMB\PredominanceHelperMENU.mb
 Open File1=D:\Dropbox (Horsboll-Moller)\3. MB_Kode\mbPredominanceHelper\codeMB\PredominanceHelper.mbp
 Open File2=D:\Dropbox (Horsboll-Moller)\3. MB_Kode\mbPredominanceHelper\codeMB\DLGConfigurePredominance.mb
 Open File3=D:\Dropbox (Horsboll-Moller)\3. MB_Kode\mbPredominanceHelper\codeMB\DLGConfigurePredominance.def
-Open File4=
+Open File4=D:\Dropbox (Horsboll-Moller)\3. MB_Kode\mbPredominanceHelper\codeMB\Library\ProgramInfo.def
+Open File5=D:\3. Demo\2. Maps\Precisely\Purchasing Power\Purchasing Power Romania 2019.TAB
+Open File6=
 Remember Files=1
 
 [Project Information]
 	Project Start=E5070C000200150007001B000D0000003E
-	Working Time=361480
-
+	Working Time=448426
